@@ -3,6 +3,7 @@
 // @namespace    mx.tools
 // @version      1.3.0
 // @description  Compare rankings to any saved snapshot (history). Deltas for Training/Buildings/Troops/Total/#Buildings/Rank, name changes. Robust detection + debounced observer. Snapshot picker in the top bar.
+// @author       mx
 // @match        *://vendettagame.es/public/mob/clasificacion*
 // @match        *://www.vendettagame.es/public/mob/clasificacion*
 // @run-at       document-end
