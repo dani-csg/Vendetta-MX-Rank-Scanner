@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vendetta MX Rank Scanner
 // @namespace    mx.tools
-// @version      1.4.0
+// @version      1.4.1
 // @description  Compare rankings to any saved snapshot (history). Deltas for Training/Buildings/Troops/Total/#Buildings/Rank, name changes. Robust detection + debounced observer. Snapshot picker in the top bar.
 // @author       mx
 // @match        *://vendettagame.es/public/mob/clasificacion*
