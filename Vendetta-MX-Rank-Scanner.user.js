@@ -10,8 +10,6 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
-// @downloadURL  https://raw.githubusercontent.com/dani-csg/Vendetta-MX-Rank-Scanner/main/rank-scanner.user.js
-// @updateURL    https://raw.githubusercontent.com/dani-csg/Vendetta-MX-Rank-Scanner/main/rank-scanner.user.js
 // ==/UserScript==
 
 (function () {
