@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vendetta MX Rank Scanner
 // @namespace    mx.tools
-// @version      1.4.1
+// @version      1.5.0
 // @description  Compare rankings to any saved snapshot (history). Deltas for Training/Buildings/Troops/Total/#Buildings/Rank, name changes. Robust detection + debounced observer. Snapshot picker in the top bar.
 // @author       mx
 // @match        *://vendettagame.es/public/mob/clasificacion*
@@ -26,7 +26,7 @@
   const K_BASE  = `mx_rank_baseline_id__${hostKey}`;
   const MAX_SNAPSHOTS = 50;
 
-  const GM_Get=(k,d)=>{try{return GM_getValue(k,d);}catch{return d;}};
+  const GM_Get=(k,d)=>{try{return GM_getValue(k,d);}catch{return d;}}; // fallback for non-GM env
   const GM_Set=(k,v)=>{try{GM_setValue(k,v);}catch{}};
   const GM_Del=(k)=>{try{GM_deleteValue(k);}catch{}};
 
@@ -62,21 +62,26 @@
       #mx-rank-bar .mx-meta{ opacity:.8; margin-left:.25rem }
 
       .mx-diff{ display:block; font-size:11px; margin-top:2px; opacity:.95 }
-      th.mx-pos, td.mx-pos{ background:rgba(46,160,67,.18)!important }
-      th.mx-zero, td.mx-zero{ background:rgba(255,167,38,.18)!important }
-      th.mx-neg, td.mx-neg{ background:rgba(244,67,54,.18)!important }
 
-      .mx-pos .mx-diff{ color:#2ea043 }
-      .mx-zero .mx-diff{ color:#ff9800 }
-      .mx-neg .mx-diff{ color:#f44336 }
+      /* -------- Zeilen-Highlight pro Spieler (TOTAL-Diff) -------- */
+      tr.mx-row-pos  > td { background: rgba(46,160,67,.18) !important; }
+      tr.mx-row-zero > td { background: rgba(255,167,38,.18) !important; } /* optional */
+      tr.mx-row-neg  > td { background: rgba(244,67,54,.18) !important; }
 
+      /* Zellen-Hintergründe für Metriken deaktivieren */
+      th.mx-pos, td.mx-pos,
+      th.mx-zero, td.mx-zero,
+      th.mx-neg, td.mx-neg { background: transparent !important; }
+
+      /* Diff-Text einfärben */
+      .mx-diff.mx-pos  { color:#2ea043 }
+      .mx-diff.mx-zero { color:#ff9800 }
+      .mx-diff.mx-neg  { color:#f44336 }
+
+      /* Rank-Highlight unverändert */
       th.mx-rank-pos, td.mx-rank-pos{ background:rgba(46,160,67,.18)!important }
       th.mx-rank-zero, td.mx-rank-zero{ background:rgba(255,167,38,.18)!important }
       th.mx-rank-neg, td.mx-rank-neg{ background:rgba(244,67,54,.18)!important }
-
-      .mx-rank-pos .mx-diff{ color:#2ea043 }
-      .mx-rank-zero .mx-diff{ color:#ff9800 }
-      .mx-rank-neg .mx-diff{ color:#f44336 }
 
       .mx-aka{ display:block; font-size:11px; color:#bbb; margin-top:2px }
       .mx-hide-diffs .mx-diff, .mx-hide-diffs .mx-aka{ display:none!important }
@@ -267,8 +272,12 @@
   /* ---------- Diffs ---------- */
   function cleanupDiffs(){
     $$('.mx-diff,.mx-aka').forEach(n=>n.remove());
-    const cls=['mx-pos','mx-zero','mx-neg','mx-rank-pos','mx-rank-zero','mx-rank-neg'];
-    $$('th,td').forEach(td=>cls.forEach(c=>td.classList.remove(c)));
+    const cellCls=['mx-pos','mx-zero','mx-neg','mx-rank-pos','mx-rank-zero','mx-rank-neg'];
+    $$('th,td').forEach(td=>cellCls.forEach(c=>td.classList.remove(c)));
+    // Row-Highlight-Klassen entfernen
+    $$('#content table tr').forEach(tr=>{
+      tr.classList.remove('mx-row-pos','mx-row-zero','mx-row-neg');
+    });
   }
 
   function annotate(players, baseline){
@@ -283,6 +292,8 @@
       }
 
       const metrics=[ ['rank',true], ['training',false], ['buildings',false], ['troops',false], ['total',false], ['buildingsCount',false] ];
+      let rowClassSet = false;
+
       for (const [key,isRank] of metrics){
         const td=p.cells[key]; if(!td) continue;
         td.querySelectorAll('.mx-diff').forEach(n=>n.remove());
@@ -290,19 +301,25 @@
 
         const cur=p.values[key]??0, old=prev[key]??0, diff=cur-old;
 
+        // Diff-Text (farbig) einfügen
         const span=document.createElement('span');
-        span.className='mx-diff';
+        span.className='mx-diff ' + (diff>0 ? 'mx-pos' : diff<0 ? 'mx-neg' : 'mx-zero');
         span.textContent='['+sign(diff)+']';
         td.appendChild(span);
 
+        // Rank-Zelle weiterhin einfärben wie gehabt
         if (isRank){
           if (diff<0) td.classList.add('mx-rank-pos');
           else if (diff===0) td.classList.add('mx-rank-zero');
           else td.classList.add('mx-rank-neg');
-        } else {
-          if (diff>0) td.classList.add('mx-pos');
-          else if (diff===0) td.classList.add('mx-zero');
-          else td.classList.add('mx-neg');
+        }
+
+        // Zeilen-Highlight anhand TOTAL-Diff (einmal pro Spieler)
+        if (!rowClassSet && key==='total'){
+          if      (diff>0) p.row.classList.add('mx-row-pos');
+          else if (diff<0) p.row.classList.add('mx-row-neg');
+          else             p.row.classList.add('mx-row-zero'); // optional
+          rowClassSet = true;
         }
       }
     }
@@ -321,7 +338,7 @@
   function annotateAgainstBaseline(){
     if (isUpdating) return;
     const table = findRankingTable();
-    const bar = ensureTopBar();
+    ensureTopBar();
 
     if (!table){ updateTopMeta(); return; }
 
